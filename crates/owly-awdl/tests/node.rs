@@ -449,6 +449,38 @@ fn multicast_goes_in_slots_0_and_10_or_any_slot_on_a_fixed_radio() {
     }
 }
 
+// spec: AWDL-12, AWDL-16
+#[test]
+fn a_shared_radio_off_the_social_channels_sends_multicast_in_the_slots_it_serves() {
+    // A Mac on Wi-Fi channel 36: 149 and 6 in slots 0 and 10, 36 in 3, 4, 12 and 13.
+    let mac = [149, 149, 149, 36, 36, 0, 0, 0, 6, 149, 149, 0, 36, 36, 0, 0];
+    let mut n = node(36, Presence::Share);
+    let mut t = meet(&mut n, &seq(mac));
+    let group = MacAddr([0x33, 0x33, 0, 0, 0, 0xfb]);
+    let mut sent = std::collections::BTreeSet::new();
+    for i in 0..40u64 {
+        let mut p = Ipv6Packet::echo_request(US, PHONE, 1, i as u16, b"m");
+        p.dst = group;
+        n.handle(Input::Outbound { now: t, packet: p })
+            .for_each(drop);
+        let end = t.plus(SLOT_US);
+        while t < end {
+            for f in transmits(&tick(&mut n, t)) {
+                if f.to == group {
+                    let c = n.clock();
+                    let into = SLOT_US - c.next_slot_us(t);
+                    assert!(into >= UNICAST_GUARD_US, "{into} µs into the slot");
+                    sent.insert(c.slot(t));
+                }
+            }
+            t = t.plus(512);
+        }
+    }
+    // Never in 0 or 10, where the Mac is on 149, and in more than one slot it shares.
+    assert!(sent.iter().all(|s| [3, 4, 12, 13].contains(s)), "{sent:?}");
+    assert!(sent.len() > 1, "{sent:?}");
+}
+
 #[test]
 fn psfs_every_110_tu_and_a_mif_every_slot() {
     let mut n = node(6, Presence::Fixed);

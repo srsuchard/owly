@@ -18,7 +18,7 @@ Requirements here have IDs with the prefix `OWLY` and follow the spec's conventi
 A Linux Wi-Fi card can't hop channels the way an Apple device does, so `owly-radio` runs AWDL in one of two placements:
 
 - **Shared:** the radio stays on the access point's channel and advertises only the slots where a peer's sequence names that channel (AWDL-12). Multicast goes in AWDL's multicast slots, where the peer is on that channel.
-  The access point has to be on a social channel (AWDL-11), unless `share_any_channel = true` in `/etc/owly/radio.toml`. Then shared mode runs on the access point's channel whatever it is. That only works with a peer whose sequence visits that channel, such as an Apple device on the same network, which visits its own Wi-Fi's channel. A peer whose sequence never names it shares no slot with us.
+  The access point has to be on a social channel (AWDL-11), unless `share_any_channel = true` in `/etc/owly/radio.toml`. Then shared mode runs on the access point's channel whatever it is. That only works with a peer whose sequence visits that channel, such as an Apple device on the same network, which visits its own Wi-Fi's channel. A peer whose sequence never names it shares no slot with us. Off the social channels, multicast goes in any slot we serve, with the 3 TU guard, as on a fixed radio: an Apple device spends slots 0 and 10 on a social channel, so multicast held for them would never reach it.
 - **Fixed:** the radio stays on one channel and advertises it in every slot. A peer visits it for a slot or two in sixteen, so multicast goes in any slot, with the 3 TU guard (AWDL-16).
 
 Accepting Block Ack (AWDL-15) only helps where the hardware answers A-MPDUs itself: `rx_ampdu` in `crates/owly-radio/drivers.toml` says which cards do.

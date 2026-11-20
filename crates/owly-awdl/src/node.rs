@@ -759,15 +759,28 @@ impl Node {
     /// Apple devices send it, clear of a 16 TU guard. A fixed radio sends
     /// it in any slot with the unicast guard, since the first AW may be all
     /// a peer spends on its channel (patch `owl-03`).
+    ///
+    /// A shared radio off the social channels (`share_any_channel`) does the
+    /// same in the slots it serves: an Apple device spends slots 0 and 10 on
+    /// a social channel, never on ours, so multicast held for them, mDNS
+    /// among it, would never be heard.
     fn multicast_wait(&self, now: Time) -> u64 {
-        let guard = if self.fixed() {
+        let anywhere = self.fixed() || !Channel::SOCIAL.contains(&self.cfg.radio.channel);
+        let guard = if anywhere {
             UNICAST_GUARD_US
         } else {
             MULTICAST_GUARD_US
         };
         let wait = self.clock.edge_wait(now, guard);
-        if wait > 0 || self.fixed() || matches!(self.clock.slot(now), 0 | 10) {
+        if wait > 0 {
             return wait;
+        }
+        let slot = self.clock.slot(now);
+        if self.fixed()
+            || (anywhere && self.own_channel(slot) != 0)
+            || (!anywhere && matches!(slot, 0 | 10))
+        {
+            return 0;
         }
         self.clock.next_slot_us(now) + guard
     }

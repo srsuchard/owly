@@ -276,7 +276,7 @@ pub fn capabilities(ops: &dyn Ops, settings: &Settings) -> Capabilities {
                 "radio",
                 "Wi-Fi isn't connected, and AirDrop shares its channel. Connect to Wi-Fi first.",
             )),
-            Some(f) => match social_channel(f) {
+            Some(f) => match shared_channel(f, settings) {
                 Some(c) => caps.channel = Some(c),
                 None => caps.missing.push(missing("radio", wrong_channel(f))),
             },
@@ -362,9 +362,20 @@ pub fn missing(id: &'static str, say: impl Into<String>) -> Missing {
     }
 }
 
+/// The channel shared mode runs on with the AP on `freq`: a social channel,
+/// or with `share_any_channel` any channel AWDL can name.
+pub fn shared_channel(freq: u32, settings: &Settings) -> Option<u8> {
+    social_channel(freq).or_else(|| {
+        settings
+            .share_any_channel
+            .then(|| owly_awdl::Channel::from_freq_mhz(freq).map(|c| c.0))
+            .flatten()
+    })
+}
+
 pub fn wrong_channel(freq: u32) -> String {
     format!(
-        "Your Wi-Fi network is on {freq} MHz, but AirDrop can only share channel 6, 44 or 149 with it. Moving the router to one of those makes this work."
+        "Your Wi-Fi network is on {freq} MHz, but AirDrop can only share channel 6, 44 or 149 with it. Moving the router to one of those makes this work. To try this channel anyway with an Apple device on the same network, set share_any_channel = true in /etc/owly/radio.toml."
     )
 }
 

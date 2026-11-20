@@ -10,6 +10,7 @@
 //! tx_rate = "mcs7"         # the data frame rate
 //! hostapd = "/usr/sbin/hostapd" # for a hidden AP, on cards with no ad-hoc mode; else found on PATH
 //! tx_amsdu = true          # send unicast as A-MSDUs where the peer takes them
+//! share_any_channel = true # shared mode: share the AP's channel even when it isn't 6, 44 or 149
 //! ```
 //!
 //! `country` matters where the kernel's regulatory domain is the world's
@@ -18,6 +19,11 @@
 //! it, exclusive mode asks for the country the kernel had from the AP, which
 //! it forgets once the station is down; a station that isn't connected has
 //! none to keep. Shared mode follows the AP's.
+//!
+//! `share_any_channel` lets shared mode run on an AP channel that isn't one
+//! of AirDrop's social channels. It's opt-in: a peer only shares slots with
+//! us where its own sequence visits that channel, which a Mac or iPhone on
+//! the same network does for its own Wi-Fi, and a peer on other Wi-Fi may not.
 
 use std::path::{Path, PathBuf};
 
@@ -44,6 +50,8 @@ pub struct Config {
     pub hostapd: Option<PathBuf>,
     #[serde(default)]
     pub tx_amsdu: bool,
+    #[serde(default)]
+    pub share_any_channel: bool,
 }
 
 impl Config {
@@ -95,6 +103,7 @@ impl Config {
             aggregation: self.aggregation,
             tx_rate,
             tx_amsdu: self.tx_amsdu,
+            share_any_channel: self.share_any_channel,
             hostapd: self.hostapd.unwrap_or_else(crate::injection::hostapd),
             quirks: Quirks::load(Path::new(quirks::OVERRIDES))?,
             run_dir,
@@ -123,6 +132,9 @@ mod tests {
         assert_eq!(config.station.as_deref(), Some("wlan1"));
         assert!(config.allow_untested);
         assert_eq!(config.reconnect_after, None);
+        assert!(!config.share_any_channel);
+        std::fs::write(&path, "share_any_channel = true\n").unwrap();
+        assert!(Config::load(&path).unwrap().share_any_channel);
         std::fs::write(&path, "stations = \"wlan1\"\n").unwrap();
         assert!(Config::load(&path).is_err());
     }

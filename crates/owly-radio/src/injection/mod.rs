@@ -88,6 +88,8 @@ pub struct Settings {
     pub tx_rate: Option<owly_awdl::TxRate>,
     /// Unicast as A-MSDUs, where the peer takes them.
     pub tx_amsdu: bool,
+    /// Shared mode: run on the AP's channel even when it isn't a social one.
+    pub share_any_channel: bool,
     pub hostapd: PathBuf,
     pub quirks: Quirks,
     pub run_dir: RunDir,

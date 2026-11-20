@@ -103,8 +103,8 @@ impl Setup<'_> {
                 "Wi-Fi isn't connected (or isn't passing traffic), and AirDrop shares its channel. Connect to Wi-Fi and try again.",
             ));
         };
-        let channel =
-            social_channel(freq).ok_or_else(|| Error::not_now(probe::wrong_channel(freq)))?;
+        let channel = probe::shared_channel(freq, self.settings)
+            .ok_or_else(|| Error::not_now(probe::wrong_channel(freq)))?;
         let sta_mac = self.station_mac()?;
 
         if self

@@ -429,6 +429,7 @@ impl Fx {
             aggregation: None,
             tx_rate: None,
             tx_amsdu: false,
+            share_any_channel: false,
             hostapd: self.dir.path().join("hostapd"),
             quirks: Quirks::load(Path::new("/nonexistent")).unwrap(),
             run_dir: self.run(),
@@ -669,6 +670,34 @@ fn probe_warns_of_ufw() {
         "{:?}",
         caps.issues
     );
+}
+
+// spec: AWDL-11, AWDL-12
+#[tokio::test(flavor = "multi_thread")]
+async fn shared_mode_takes_a_non_social_ap_channel_only_when_allowed() {
+    // An AP on 36: refused by default, as the probe explains.
+    let fx = Fx::with(|o| o.freq = Some(5180));
+    fx.ops.ifaces.lock().unwrap().get_mut(STATION).unwrap().freq = Some(5180);
+    assert!(fx.backend().up().await.is_err());
+    let caps = fx.backend().probe();
+    assert!(
+        caps.missing[0].say.contains("share_any_channel"),
+        "{caps:?}"
+    );
+
+    // With share_any_channel, the AP's channel, in shared presence.
+    let fx = Fx::with(|o| o.freq = Some(5180));
+    fx.ops.ifaces.lock().unwrap().get_mut(STATION).unwrap().freq = Some(5180);
+    let mut settings = fx.settings();
+    settings.share_any_channel = true;
+    let caps = fx.backend_with(settings.clone()).probe();
+    assert_eq!(caps.missing, [], "{caps:?}");
+    assert_eq!(caps.channel, Some(36));
+    let mut backend = fx.backend_with(settings);
+    backend.up().await.unwrap();
+    let awdl = fx.awdl();
+    assert_eq!(awdl.radio.channel.0, 36);
+    assert_eq!(awdl.radio.presence, Presence::Share);
 }
 
 // spec: AWDL-2, NET-1

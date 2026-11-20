@@ -210,6 +210,7 @@ fn settings(station: &str, mode: &str, run: &Path) -> Settings {
         aggregation: None,
         tx_rate: None,
         tx_amsdu: false,
+        share_any_channel: false,
         hostapd: PathBuf::from("/usr/bin/hostapd"),
         quirks,
         run_dir: RunDir::new(run),
